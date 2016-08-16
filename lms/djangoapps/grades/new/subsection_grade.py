@@ -59,6 +59,9 @@ class SubsectionGrade(object):
             BlockRecord(location, weight, score.possible)
             for location, (score, weight) in self.locations_to_weighted_scores.iteritems()
         ]
+        if course.course_version == None:
+            course.course_version = 1
+
         PersistentSubsectionGrade.save_grade(
             user_id=student.id,
             usage_key=self.location,
