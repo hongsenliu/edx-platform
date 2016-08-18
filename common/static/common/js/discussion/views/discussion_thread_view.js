@@ -154,10 +154,11 @@
                     });
                 }
                 if (this.mode === 'tab') {
-                    setTimeout(function() {
-                        return self.loadInitialResponses();
-                    }, 100);
-                    return this.$('.post-tools').hide();
+                    var currentThread = $('.forum-nav-thread-link.is-active').parent().data('id')
+                    if(currentThread === this.model.id){
+                        self.loadInitialResponses(this.model);
+                        return this.$('.post-tools').hide();
+                    }
                 } else {
                     return this.collapse();
                 }
@@ -221,13 +222,14 @@
                 }
             };
 
-            DiscussionThreadView.prototype.loadResponses = function(responseLimit, $elem, firstLoad) {
+            DiscussionThreadView.prototype.loadResponses = function(responseLimit, $elem, firstLoad, thread) {
                 var takeFocus,
-                    self = this;
+                    self = this,
+                    thread = thread ? thread : this.model;
                 takeFocus = this.mode === 'tab' ? false : true;
                 this.responsesRequest = DiscussionUtil.safeAjax({
                     url: DiscussionUtil.urlFor(
-                        'retrieve_single_thread', this.model.get('commentable_id'), this.model.id
+                        'retrieve_single_thread', thread.get('commentable_id'), thread.id
                     ),
                     data: {
                         resp_skip: this.responses.size(),
@@ -240,6 +242,9 @@
                         self.responsesRequest = null;
                     },
                     success: function(data) {
+                        if(firstLoad){
+                            this.$elem.empty();
+                        }
                         Content.loadContentInfos(data.annotated_content_info);
                         if (self.isQuestion()) {
                             self.markedAnswers.add(data.content.endorsed_responses);
