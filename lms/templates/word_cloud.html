@@ -21,7 +21,7 @@
 
         % for row in range(num_inputs):
             <label>
-                <span class="sr">${row + 1}/${num_inputs}</span>
+                <span class="sr">${_('{num} of {total}').format(num=row+1, total=num_inputs)}</span>
                 <input
                     class="input-cloud"
                     ${'style="display: none;"' if submitted else ''}

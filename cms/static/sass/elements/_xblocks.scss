@@ -248,6 +248,18 @@
         color: $color-visibility-set;
       }
     }
+    
+    .action {
+        
+        .save {
+            @extend %btn-secondary-blue;
+            // a few overrides
+            font-size: 90%;
+            margin-left: .5rem;
+            margin-top: .5rem;
+            padding: .5rem 1rem;
+        }
+    }
   }
 
   // +Messaging - Xblocks

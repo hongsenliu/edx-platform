@@ -17,8 +17,8 @@
         'gettext',
         'edx-ui-toolkit/js/utils/html-utils'
     ], function(gettext, HtmlUtils) {
-        function generateUniqueId(wordCloudId, uniqueId) {
-            return '_wc_' + wordCloudId + '_' + uniqueId;
+        function generateUniqueId(wordCloudId, counter) {
+            return '_wc_' + wordCloudId + '_' + counter;
         }
 
         /**
@@ -217,7 +217,10 @@
                 cloudSectionEl = this.wordCloudEl.find('.result_cloud_section'),
 
                 // Needed for caсhing of d3 group elements
-                groupEl;
+                groupEl,
+                
+                // Iterator for word cloud count for uniqueness
+                wcCount = 0;
 
             // If bounding rectangle is given, scale based on the bounding box of all the words.
             if (bounds) {
@@ -280,13 +283,14 @@
                     .enter()
                     .append('g')
                     .attr('data-id', function() {
-                        return Math.floor(Math.random() * (999 - 1 + 1)) + 1;
+                        wcCount = wcCount + 1;
+                        return wcCount;
                     })
                     .attr('aria-describedby', function() {
                         return HtmlUtils.interpolateHtml(
-                            gettext('text_word_{word} title_word_{word}'),
+                            gettext('text_word_{uniqueId} title_word_{uniqueId}'),
                             {
-                                word: generateUniqueId(cloudSectionEl.attr('id'), $(this).data('id'))
+                                uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).data('id'))
                             }
                         );
                     });
@@ -295,9 +299,9 @@
                 .append('title')
                 .attr('id', function() {
                     return HtmlUtils.interpolateHtml(
-                        gettext('title_word_{word}'),
+                        gettext('title_word_{uniqueId}'),
                         {
-                            word: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id'))
+                            uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id'))
                         }
                     );
                 })
@@ -319,9 +323,9 @@
                 .append('text')
                 .attr('id', function() {
                     return HtmlUtils.interpolateHtml(
-                        gettext('text_word_{word}'),
+                        gettext('text_word_{uniqueId}'),
                         {
-                            word: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id'))
+                            uniqueId: generateUniqueId(cloudSectionEl.attr('id'), $(this).parent().data('id'))
                         }
                     );
                 })
