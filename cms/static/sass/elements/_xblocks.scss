@@ -252,12 +252,9 @@
     .action {
         
         .save {
-            @extend %btn-secondary-blue;
-            // a few overrides
-            font-size: 90%;
-            margin-left: .5rem;
-            margin-top: .5rem;
-            padding: .5rem 1rem;
+            // taking styles from LMS for these Save buttons to maintain consistency
+            // there is no studio-specific style for these LMS-styled buttons
+            @extend %btn-lms-style;
         }
     }
   }
