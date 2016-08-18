@@ -257,9 +257,10 @@ class ProblemTypeTestMixin(object):
         There should be no answer selected
         And the focus should shift appropriately
         """
+        # TODO: Removed for testing on Jenkins
         # Some problem types are not focusing on the expected location.
-        if self.reset_focus_fail:
-            raise SkipTest("Test incompatible with the current problem type")
+        # if self.reset_focus_fail:
+        #     raise SkipTest("Test incompatible with the current problem type")
 
         self.problem_page.wait_for(
             lambda: self.problem_page.problem_name == self.problem_name,
