@@ -145,11 +145,11 @@ def recalculate_subsection_grade_handler(sender, **kwargs):  # pylint: disable=u
     student = user_by_anonymous_id(user_id)
 
     if all((student, course_key, usage_key)):
-        from courseware.courses import get_course_by_id
-        course = get_course_by_id(course_key, depth=0)  # avoids circular import :(
+        from courseware.courses import get_course_by_id  # avoids circular import
+        course = get_course_by_id(course_key, depth=0)
         course_structure_for_course = get_course_blocks(student, usage_key)
         subsection = course_structure_for_course[usage_key]
-        from new.subsection_grade import SubsectionGradeFactory
+        from lms.djangoapps.grades.new.subsection_grade import SubsectionGradeFactory  # avoids circular import
         SubsectionGradeFactory(student).update(subsection, course_structure_for_course, course)
     else:
         log.exception(
