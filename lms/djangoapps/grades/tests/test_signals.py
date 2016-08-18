@@ -165,6 +165,10 @@ class SubmissionSignalRelayTest(TestCase):
 @patch.dict('django.conf.settings.FEATURES', {'ENABLE_SUBSECTION_GRADES_SAVED': True})
 @ddt.ddt
 class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
+    """
+    Ensures that upon SCORE_CHANGED signals, the handler
+    initiates an update to the affected subsection grade.
+    """
     def setUp(self):
         """
         Configure mocks for all the dependencies of the render method
@@ -186,7 +190,7 @@ class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
         self.sequential = ItemFactory.create(parent=self.chapter, category='sequential', display_name="Open Sequential")
         self.problem = ItemFactory.create(parent=self.sequential, category='problem', display_name='problem')
 
-        self.SCORE_CHANGED_KWARGS = {
+        self.score_changed_kwargs = {
             'points_possible': 10,
             'points_earned': 5,
             'user_id': 'anonymous_id',
@@ -210,11 +214,11 @@ class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
     def test_subsection_grade_updated_on_signal(self, default_store):
         with self.store.default_store(default_store):
             with check_mongo_calls(1) and self.assertNumQueries(0):
-                recalculate_subsection_grade_handler(None, **self.SCORE_CHANGED_KWARGS)
+                recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
             self.assertTrue(self.update_mock.called)
 
     @ddt.data('points_possible', 'points_earned', 'user_id', 'course_id', 'usage_id')
     def test_missing_kwargs(self, kwarg):
-        del self.SCORE_CHANGED_KWARGS[kwarg]
-        recalculate_subsection_grade_handler(None, **self.SCORE_CHANGED_KWARGS)
+        del self.score_changed_kwargs[kwarg]
+        recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
         self.assertEqual(self.update_mock.called, kwarg in ['points_possible', 'points_earned'])
