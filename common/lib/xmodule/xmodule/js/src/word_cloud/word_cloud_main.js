@@ -218,7 +218,7 @@
 
                 // Needed for caсhing of d3 group elements
                 groupEl,
-                
+
                 // Iterator for word cloud count for uniqueness
                 wcCount = 0;
 
