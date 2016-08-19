@@ -179,7 +179,7 @@ class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
             name='course',
             run='run',
             metadata={'enable_subsection_grades_saved': enable_subsection_grades})
-        # self.course.enable_subsection_grades_saved = enable_subsection_grades
+        
         self.chapter = ItemFactory.create(parent=self.course, category="chapter", display_name="Chapter")
         self.sequential = ItemFactory.create(parent=self.chapter, category='sequential', display_name="Open Sequential")
         self.problem = ItemFactory.create(parent=self.sequential, category='problem', display_name='problem')
