@@ -162,13 +162,11 @@
 // UI: actions
 .forum-new-post-form {
   .submit {
-    @include blue-button;
     @include margin-right($baseline/2);
     display: inline-block;
   }
 
   .cancel {
-    @include white-button;
     display: inline-block;
   }
 }
