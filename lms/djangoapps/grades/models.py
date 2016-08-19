@@ -251,9 +251,10 @@ class PersistentSubsectionGrade(TimeStampedModel):
                 defaults=kwargs,
             )
         except IntegrityError:
-            is_created = False
-        if not is_created:
             cls.update_grade(user_id=user_id, usage_key=usage_key, **kwargs)
+        else:
+            if not is_created:
+                grade.update(**kwargs)
 
     @classmethod
     def read_grade(cls, user_id, usage_key):
