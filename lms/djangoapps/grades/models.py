@@ -164,7 +164,7 @@ class PersistentSubsectionGradeQuerySet(models.QuerySet):
             visible_blocks (iterable of SerializedBlockRecord)
         """
         visible_blocks = kwargs.pop('visible_blocks')
-        kwargs['course_version'] = kwargs['course_version'] or ""
+        kwargs['course_version'] = kwargs.get('course_version', None) or ""
 
         visible_blocks_hash = VisibleBlocks.objects.hash_from_blockrecords(blocks=visible_blocks)
         grade = self.model(
