@@ -133,8 +133,9 @@
             };
 
             DiscussionThreadView.prototype.render = function() {
-                var self = this;
-                var $element = $(this.renderTemplate());
+                var currentThread,
+                    self = this,
+                    $element = $(this.renderTemplate());
                 this.$el.empty();
                 this.$el.append($element);
                 this.delegateEvents();
@@ -154,11 +155,11 @@
                     });
                 }
                 if (this.mode === 'tab') {
-                    var currentThread = $('.forum-nav-thread-link.is-active').parent().data('id')
-                    if(currentThread === this.model.id){
-                        self.loadInitialResponses(this.model);
-                        return this.$('.post-tools').hide();
+                    currentThread = $('.forum-nav-thread-link.is-active').parent().data('id');
+                    if (currentThread === this.model.id) {
+                        return self.loadInitialResponses(this.model);
                     }
+                    return this.$('.post-tools').hide();
                 } else {
                     return this.collapse();
                 }
@@ -225,11 +226,12 @@
             DiscussionThreadView.prototype.loadResponses = function(responseLimit, $elem, firstLoad, thread) {
                 var takeFocus,
                     self = this,
-                    thread = thread ? thread : this.model;
+                    threadModel;
                 takeFocus = this.mode === 'tab' ? false : true;
+                threadModel = thread || this.model;
                 this.responsesRequest = DiscussionUtil.safeAjax({
                     url: DiscussionUtil.urlFor(
-                        'retrieve_single_thread', thread.get('commentable_id'), thread.id
+                        'retrieve_single_thread', threadModel.get('commentable_id'), threadModel.id
                     ),
                     data: {
                         resp_skip: this.responses.size(),
@@ -242,7 +244,7 @@
                         self.responsesRequest = null;
                     },
                     success: function(data) {
-                        if(firstLoad){
+                        if (firstLoad) {
                             this.$elem.empty();
                         }
                         Content.loadContentInfos(data.annotated_content_info);
