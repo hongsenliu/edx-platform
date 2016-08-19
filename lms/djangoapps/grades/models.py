@@ -25,12 +25,12 @@ log = logging.getLogger(__name__)
 
 # Used to serialize information about a block at the time it was used in
 # grade calculation.
-BlockRecord = namedtuple('BlockRecord', ['locator', 'weight', 'max_score'])
+SerializedBlockRecord = namedtuple('SerializedBlockRecord', ['locator', 'weight', 'max_score'])
 
 
 class BlockRecordSet(frozenset):
     """
-    An immutable ordered collection of BlockRecord objects.
+    An immutable ordered collection of SerializedBlockRecord objects.
     """
 
     def __init__(self, *args, **kwargs):
@@ -59,7 +59,7 @@ class BlockRecordSet(frozenset):
         Return a BlockRecordSet from a json list.
         """
         block_dicts = json.loads(blockrecord_json)
-        record_generator = (BlockRecord(**block) for block in block_dicts)
+        record_generator = (SerializedBlockRecord(**block) for block in block_dicts)
         return cls(record_generator)
 
     def to_hash(self):
@@ -119,7 +119,7 @@ class VisibleBlocks(models.Model):
     A django model used to track the state of a set of visible blocks under a
     given subsection at the time they are used for grade calculation.
 
-    This state is represented using an array of serialized BlockRecords, stored
+    This state is represented using an array of SerializedBlockRecord, stored
     in the blocks_json field. A hash of this json array is used for lookup
     purposes.
     """
@@ -156,14 +156,15 @@ class PersistentSubsectionGradeQuerySet(models.QuerySet):
             user_id (int)
             usage_key (serialized UsageKey)
             course_version (str)
-            subtree_edited_date (datetime)
+            subtree_edited_timestamp (datetime)
             earned_all (float)
             possible_all (float)
             earned_graded (float)
             possible_graded (float)
-            visible_blocks (iterable of BlockRecord)
+            visible_blocks (iterable of SerializedBlockRecord)
         """
         visible_blocks = kwargs.pop('visible_blocks')
+        kwargs['course_version'] = kwargs['course_version'] or ""
 
         visible_blocks_hash = VisibleBlocks.objects.hash_from_blockrecords(blocks=visible_blocks)
         grade = self.model(
@@ -198,7 +199,7 @@ class PersistentSubsectionGrade(TimeStampedModel):
     usage_key = UsageKeyField(blank=False, max_length=255)
 
     # Information relating to the state of content when grade was calculated
-    subtree_edited_date = models.DateTimeField('last content edit timestamp', blank=False)
+    subtree_edited_timestamp = models.DateTimeField('last content edit timestamp', blank=False)
     course_version = models.CharField('guid of latest course version', blank=True, max_length=255)
 
     # earned/possible refers to the number of points achieved and available to achieve.
@@ -268,7 +269,7 @@ class PersistentSubsectionGrade(TimeStampedModel):
             user_id,
             usage_key,
             course_version,
-            subtree_edited_date,
+            subtree_edited_timestamp,
             earned_all,
             possible_all,
             earned_graded,
@@ -294,7 +295,7 @@ class PersistentSubsectionGrade(TimeStampedModel):
 
         grade.update(
             course_version=course_version,
-            subtree_edited_date=subtree_edited_date,
+            subtree_edited_timestamp=subtree_edited_timestamp,
             earned_all=earned_all,
             possible_all=possible_all,
             earned_graded=earned_graded,
@@ -305,7 +306,7 @@ class PersistentSubsectionGrade(TimeStampedModel):
     def update(
             self,
             course_version,
-            subtree_edited_date,
+            subtree_edited_timestamp,
             earned_all,
             possible_all,
             earned_graded,
@@ -318,8 +319,8 @@ class PersistentSubsectionGrade(TimeStampedModel):
         """
         visible_blocks_hash = VisibleBlocks.objects.hash_from_blockrecords(blocks=visible_blocks)
 
-        self.course_version = course_version
-        self.subtree_edited_date = subtree_edited_date
+        self.course_version = course_version or ""
+        self.subtree_edited_timestamp = subtree_edited_timestamp
         self.earned_all = earned_all
         self.possible_all = possible_all
         self.earned_graded = earned_graded

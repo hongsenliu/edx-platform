@@ -12,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from opaque_keys.edx.locator import CourseLocator, BlockUsageLocator
 
-from lms.djangoapps.grades.models import BlockRecord, BlockRecordSet, PersistentSubsectionGrade, VisibleBlocks
+from lms.djangoapps.grades.models import SerializedBlockRecord, BlockRecordSet, PersistentSubsectionGrade, VisibleBlocks
 
 
 class GradesModelTestCase(TestCase):
@@ -36,25 +36,25 @@ class GradesModelTestCase(TestCase):
             block_type='problem',
             block_id='block_id_b'
         )
-        self.record_a = BlockRecord(unicode(self.locator_a), 1, 10)
-        self.record_b = BlockRecord(unicode(self.locator_b), 1, 10)
+        self.record_a = SerializedBlockRecord(unicode(self.locator_a), 1, 10)
+        self.record_b = SerializedBlockRecord(unicode(self.locator_b), 1, 10)
 
 
 @ddt.ddt
 class BlockRecordTest(GradesModelTestCase):
     """
-    Test the BlockRecord model.
+    Test the SerializedBlockRecord model.
     """
     def setUp(self):
         super(BlockRecordTest, self).setUp()
 
     def test_creation(self):
         """
-        Tests creation of a BlockRecord.
+        Tests creation of a SerializedBlockRecord.
         """
         weight = 1
         max_score = 10
-        record = BlockRecord(
+        record = SerializedBlockRecord(
             self.locator_a,
             weight,
             max_score,
@@ -64,14 +64,14 @@ class BlockRecordTest(GradesModelTestCase):
     @ddt.data(
         (0, 0, "0123456789abcdef"),
         (1, 10, 'totally_a_real_block_key'),
-        ("BlockRecord is", "a dumb data store", "with no validation"),
+        ("SerializedBlockRecord is", "a dumb data store", "with no validation"),
     )
     @ddt.unpack
     def test_serialization(self, weight, max_score, block_key):
         """
-        Tests serialization of a BlockRecord using the to_dict() method.
+        Tests serialization of a SerializedBlockRecord using the to_dict() method.
         """
-        record = BlockRecord(block_key, weight, max_score)
+        record = SerializedBlockRecord(block_key, weight, max_score)
         expected = OrderedDict([
             ("locator", block_key),
             ("weight", weight),
@@ -111,7 +111,7 @@ class VisibleBlocksTest(GradesModelTestCase):
 
     def test_blocks_property(self):
         """
-        Ensures that, given an array of BlockRecord, creating visible_blocks and accessing visible_blocks.blocks yields
+        Ensures that, given an array of SerializedBlockRecord, creating visible_blocks and accessing visible_blocks.blocks yields
         a copy of the initial array. Also, trying to set the blocks property should raise an exception.
         """
         expected_blocks = [self.record_a, self.record_b]
@@ -137,7 +137,7 @@ class PersistentSubsectionGradeTest(GradesModelTestCase):
             "user_id": 12345,
             "usage_key": self.usage_key,
             "course_version": "deadbeef",
-            "subtree_edited_date": "2016-08-01 18:53:24.354741",
+            "subtree_edited_timestamp": "2016-08-01 18:53:24.354741",
             "earned_all": 6,
             "possible_all": 12,
             "earned_graded": 6,

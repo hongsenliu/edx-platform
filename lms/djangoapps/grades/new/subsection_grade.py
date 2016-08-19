@@ -8,7 +8,7 @@ from django.conf import settings
 
 from courseware.model_data import ScoresClient
 from lms.djangoapps.grades.scores import get_score, possibly_scored
-from lms.djangoapps.grades.models import BlockRecord, PersistentSubsectionGrade
+from lms.djangoapps.grades.models import SerializedBlockRecord, PersistentSubsectionGrade
 from student.models import anonymous_id_for_user, User
 from submissions import api as submissions_api
 from xmodule import block_metadata_utils, graders
@@ -30,14 +30,14 @@ class SubsectionGrade(object):
 
         self.graded_total = None  # aggregated grade for all graded problems
         self.all_total = None  # aggregated grade for all problems, regardless of whether they are graded
-        self.locations_to_scores = OrderedDict()  # dict of problem locations to their Score objects
+        self.locations_to_weighted_scores = OrderedDict()  # dict of problem locations to (Score, weight) tuples
 
     @lazy
     def scores(self):
         """
         List of all problem scores in the subsection.
         """
-        return [score for score, _ in self.locations_to_scores.itervalues()]
+        return [score for score, _ in self.locations_to_weighted_scores.itervalues()]
 
     def compute(self, student, course_structure, scores_client, submissions_scores):
         """
@@ -56,14 +56,14 @@ class SubsectionGrade(object):
         Persist the SubsectionGrade.
         """
         visible_blocks = [
-            BlockRecord(unicode(location), weight, score.possible)
-            for location, (score, weight) in self.locations_to_scores.iteritems()
+            SerializedBlockRecord(unicode(location), weight, score.possible)
+            for location, (score, weight) in self.locations_to_weighted_scores.iteritems()
         ]
         PersistentSubsectionGrade.save_grade(
             user_id=student.id,
             usage_key=self.location,
-            course_version=getattr(course, 'course_version', ""),
-            subtree_edited_date=subsection.subtree_edited_on,
+            course_version=getattr(course, 'course_version', None),
+            subtree_edited_timestamp=subsection.subtree_edited_on,
             earned_all=self.all_total.earned,
             possible_all=self.all_total.possible,
             earned_graded=self.graded_total.earned,
@@ -87,18 +87,18 @@ class SubsectionGrade(object):
             )
 
         self.graded_total = Score(
-            model.earned_graded,
-            model.possible_graded,
-            True,
-            self.display_name,
-            self.location,
+            earned=model.earned_graded,
+            possible=model.possible_graded,
+            graded=True,
+            section=self.display_name,
+            module_id=self.location,
         )
         self.all_total = Score(
-            model.earned_all,
-            model.possible_all,
-            False,
-            self.display_name,
-            self.location,
+            earned=model.earned_all,
+            possible=model.possible_all,
+            graded=False,
+            section=self.display_name,
+            module_id=self.location,
         )
 
     def _compute_block_score(
@@ -123,6 +123,8 @@ class SubsectionGrade(object):
                 submissions_scores,
             )
 
+            # There's a chance that the value of weight is not the same value used when the problem was scored,
+            # since we can get the value from either block_structure or CSM/submissions.
             weight = block.weight
             if persisted_values:
                 possible = persisted_values.get('possible', possible)
@@ -132,7 +134,7 @@ class SubsectionGrade(object):
                 # cannot grade a problem with a denominator of 0
                 block_graded = block.graded if possible > 0 else False
 
-                self.locations_to_scores[block.location] = (
+                self.locations_to_weighted_scores[block.location] = (
                     Score(
                         earned,
                         possible,
@@ -161,16 +163,16 @@ class SubsectionGradeFactory(object):
         self._prefetch_scores(course_structure, course)
         return (
             self._get_saved_grade(subsection, course_structure, course) or
-            self._compute_and_update_grade(subsection, course_structure, course)
+            self._compute_and_save_grade(subsection, course_structure, course)
         )
 
-    def _compute_and_update_grade(self, subsection, course_structure, course):
+    def _compute_and_save_grade(self, subsection, course_structure, course):
         """
         Freshly computes and updates the grade for the student and subsection.
         """
         subsection_grade = SubsectionGrade(subsection)
         subsection_grade.compute(self.student, course_structure, self._scores_client, self._submissions_scores)
-        self._update_saved_grade(subsection_grade, subsection, course)
+        self._save_grade(subsection_grade, subsection, course)
         return subsection_grade
 
     def _get_saved_grade(self, subsection, course_structure, course):  # pylint: disable=unused-argument
@@ -189,7 +191,7 @@ class SubsectionGradeFactory(object):
             except PersistentSubsectionGrade.DoesNotExist:
                 return None
 
-    def _update_saved_grade(self, subsection_grade, subsection, course):  # pylint: disable=unused-argument
+    def _save_grade(self, subsection_grade, subsection, course):  # pylint: disable=unused-argument
         """
         Updates the saved grade for the student and subsection.
         """

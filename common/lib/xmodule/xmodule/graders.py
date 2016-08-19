@@ -29,6 +29,7 @@ def float_sum(iterable):
 def aggregate_scores(scores, section_name="summary", location=None):
     """
     scores: A list of Score objects
+    location: The location under which all objects in scores are located
     returns: A tuple (all_total, graded_total).
         all_total: A Score representing the total score summed over all input scores
         graded_total: A Score representing the score summed over all graded input scores
