@@ -8,7 +8,7 @@ from django.conf import settings
 
 from courseware.model_data import ScoresClient
 from lms.djangoapps.grades.scores import get_score, possibly_scored
-from lms.djangoapps.grades.models import SerializedBlockRecord, PersistentSubsectionGrade
+from lms.djangoapps.grades.models import BlockRecord, PersistentSubsectionGrade
 from student.models import anonymous_id_for_user, User
 from submissions import api as submissions_api
 from xmodule import block_metadata_utils, graders
@@ -56,7 +56,7 @@ class SubsectionGrade(object):
         Persist the SubsectionGrade.
         """
         visible_blocks = [
-            SerializedBlockRecord(unicode(location), weight, score.possible)
+            BlockRecord(location, weight, score.possible)
             for location, (score, weight) in self.locations_to_weighted_scores.iteritems()
         ]
         PersistentSubsectionGrade.save_grade(

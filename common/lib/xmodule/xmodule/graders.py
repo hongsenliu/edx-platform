@@ -46,7 +46,7 @@ def aggregate_scores(scores, section_name="summary", location=None):
         total_possible,
         False,
         section_name,
-        location
+        location,
     )
     #selecting only graded things
     graded_total = Score(
@@ -54,7 +54,7 @@ def aggregate_scores(scores, section_name="summary", location=None):
         total_possible_graded,
         True,
         section_name,
-        location
+        location,
     )
 
     return all_total, graded_total

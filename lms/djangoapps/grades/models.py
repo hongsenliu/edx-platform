@@ -25,12 +25,12 @@ log = logging.getLogger(__name__)
 
 # Used to serialize information about a block at the time it was used in
 # grade calculation.
-SerializedBlockRecord = namedtuple('SerializedBlockRecord', ['locator', 'weight', 'max_score'])
+BlockRecord = namedtuple('BlockRecord', ['locator', 'weight', 'max_score'])
 
 
 class BlockRecordSet(frozenset):
     """
-    An immutable ordered collection of SerializedBlockRecord objects.
+    An immutable ordered collection of BlockRecord objects.
     """
 
     def __init__(self, *args, **kwargs):
@@ -45,9 +45,12 @@ class BlockRecordSet(frozenset):
         """
         if self._json is None:
             sorted_blocks = sorted(self, key=attrgetter('locator'))
+            list_of_block_dicts = [block._asdict() for block in sorted_blocks]
+            for block_dict in list_of_block_dicts:
+                block_dict['locator'] = unicode(block_dict['locator'])  # BlockUsageLocator is not json-serializable
             # Remove spaces from separators for more compact representation
             self._json = json.dumps(
-                [block._asdict() for block in sorted_blocks],
+                list_of_block_dicts,
                 separators=(',', ':'),
                 sort_keys=True,
             )
@@ -59,7 +62,7 @@ class BlockRecordSet(frozenset):
         Return a BlockRecordSet from a json list.
         """
         block_dicts = json.loads(blockrecord_json)
-        record_generator = (SerializedBlockRecord(**block) for block in block_dicts)
+        record_generator = (BlockRecord(**block) for block in block_dicts)
         return cls(record_generator)
 
     def to_hash(self):
@@ -119,7 +122,7 @@ class VisibleBlocks(models.Model):
     A django model used to track the state of a set of visible blocks under a
     given subsection at the time they are used for grade calculation.
 
-    This state is represented using an array of SerializedBlockRecord, stored
+    This state is represented using an array of BlockRecord, stored
     in the blocks_json field. A hash of this json array is used for lookup
     purposes.
     """
@@ -161,7 +164,7 @@ class PersistentSubsectionGradeQuerySet(models.QuerySet):
             possible_all (float)
             earned_graded (float)
             possible_graded (float)
-            visible_blocks (iterable of SerializedBlockRecord)
+            visible_blocks (iterable of BlockRecord)
         """
         visible_blocks = kwargs.pop('visible_blocks')
         kwargs['course_version'] = kwargs.get('course_version', None) or ""
