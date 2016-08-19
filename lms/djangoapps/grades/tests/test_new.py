@@ -116,7 +116,6 @@ class SubsectionGradeFactoryTest(GradeTestBase):
         """
         super(SubsectionGradeFactoryTest, self).setUp()
 
-    @patch.dict(settings.FEATURES, {'ENABLE_SUBSECTION_GRADES_SAVED': True})
     def test_create(self):
         """
         Tests to ensure that a persistent subsection grade is created, saved, then fetched on re-request.
