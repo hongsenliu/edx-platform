@@ -122,8 +122,8 @@ class SubsectionGradeFactoryTest(GradeTestBase):
         Tests to ensure that a persistent subsection grade is created, saved, then fetched on re-request.
         """
         with patch(
-            'lms.djangoapps.grades.new.subsection_grade.SubsectionGradeFactory._update_saved_grade',
-            wraps=self.subsection_grade_factory._update_saved_grade  # pylint: disable=protected-access
+            'lms.djangoapps.grades.new.subsection_grade.SubsectionGradeFactory._save_grade',
+            wraps=self.subsection_grade_factory._save_grade  # pylint: disable=protected-access
         ) as mock_save_grades:
             with patch(
                 'lms.djangoapps.grades.new.subsection_grade.SubsectionGradeFactory._get_saved_grade',

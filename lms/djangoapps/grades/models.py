@@ -165,10 +165,11 @@ class PersistentSubsectionGradeQuerySet(models.QuerySet):
         """
         visible_blocks = kwargs.pop('visible_blocks')
         kwargs['course_version'] = kwargs.get('course_version', None) or ""
+        if not kwargs.get('course_id', None):
+            kwargs['course_id'] = kwargs['usage_key'].course_key
 
         visible_blocks_hash = VisibleBlocks.objects.hash_from_blockrecords(blocks=visible_blocks)
         grade = self.model(
-            course_id=kwargs['usage_key'].course_key,
             visible_blocks_id=visible_blocks_hash,
             **kwargs
         )
@@ -240,12 +241,16 @@ class PersistentSubsectionGrade(TimeStampedModel):
         user_id = kwargs.pop('user_id')
         usage_key = kwargs.pop('usage_key')
         try:
-            grade, is_created = cls.objects.get_or_create(user_id=user_id, usage_key=usage_key, defaults=kwargs)
+            grade, is_created = cls.objects.get_or_create(
+                user_id=user_id,
+                course_id=usage_key.course_key,
+                usage_key=usage_key,
+                defaults=kwargs,
+            )
         except IntegrityError:
             is_created = False
         if not is_created:
-            grade = cls.objects.get(user_id=user_id, course_id=usage_key.course_key, usage_key=usage_key)
-            grade.update(**kwargs)
+            cls.update_grade(user_id=user_id, usage_key=usage_key, **kwargs)
 
     @classmethod
     def read_grade(cls, user_id, usage_key):

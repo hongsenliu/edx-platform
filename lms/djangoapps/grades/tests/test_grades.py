@@ -208,7 +208,7 @@ class TestProgressSummary(TestCase):
         course_structure = MagicMock()
         course_structure.get_children = lambda location: locations_to_scored_children[location]
         self.course_grade = CourseGrade(student=None, course=None, course_structure=course_structure)
-        self.course_grade.locations_to_scores = weighted_scores
+        self.course_grade.locations_to_weighted_scores = weighted_scores
 
     def create_score(self, earned, possible):
         """

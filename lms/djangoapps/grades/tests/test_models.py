@@ -111,8 +111,9 @@ class VisibleBlocksTest(GradesModelTestCase):
 
     def test_blocks_property(self):
         """
-        Ensures that, given an array of SerializedBlockRecord, creating visible_blocks and accessing visible_blocks.blocks yields
-        a copy of the initial array. Also, trying to set the blocks property should raise an exception.
+        Ensures that, given an array of SerializedBlockRecord, creating visible_blocks and accessing
+        visible_blocks.blocks yields a copy of the initial array. Also, trying to set the blocks property should raise
+        an exception.
         """
         expected_blocks = [self.record_a, self.record_b]
         visible_blocks = VisibleBlocks.objects.create_from_blockrecords(expected_blocks)
