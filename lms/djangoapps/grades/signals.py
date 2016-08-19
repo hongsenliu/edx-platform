@@ -6,10 +6,8 @@ from django.dispatch import receiver, Signal
 from logging import getLogger
 from opaque_keys.edx.locator import CourseLocator
 from opaque_keys.edx.keys import UsageKey
-from student.models import user_by_anonymous_id
+from student.models import User, user_by_anonymous_id
 from submissions.models import score_set, score_reset
-from course_blocks.api import get_course_blocks
-
 
 log = getLogger(__name__)
 
@@ -126,34 +124,19 @@ def recalculate_subsection_grade_handler(sender, **kwargs):  # pylint: disable=u
     """
     if not settings.FEATURES.get('ENABLE_SUBSECTION_GRADES_SAVED', False):
         return
+    try:
+        course_id = kwargs.get('course_id', None)
+        usage_id = kwargs.get('usage_id', None)
+        user_id = kwargs.get('user_id', None)
 
-    points_possible = kwargs.get('points_possible', None)
-    points_earned = kwargs.get('points_earned', None)
-    course_id = kwargs.get('course_id', None)
-    usage_id = kwargs.get('usage_id', None)
-    user_id = kwargs.get('user_id', None)
-    if not all((user_id, course_id, usage_id)):
+        course_key = CourseLocator.from_string(course_id)
+        usage_key = UsageKey.from_string(usage_id).replace(course_key=course_key)
+        student = User.objects.get(id=user_id)
+        from new.subsection_grade import SubsectionGradeFactory
+        SubsectionGradeFactory(student).update(student, usage_key, course_key)
+    except Exception as ex:  # pylint: disable=broad-except
         log.exception(
             u"Failed to process SCORE_CHANGED signal. "
-            "points_possible: %s, points_earned: %s, user_id: %s, course_id: %s, "
-            "usage_id: %s", points_possible, points_earned, user_id, course_id, usage_id
-        )
-        return
-
-    course_key = CourseLocator.from_string(course_id)
-    usage_key = UsageKey.from_string(usage_id).replace(course_key=course_key)
-    student = user_by_anonymous_id(user_id)
-
-    if all((student, course_key, usage_key)):
-        from courseware.courses import get_course_by_id  # avoids circular import
-        course = get_course_by_id(course_key, depth=0)
-        course_structure_for_course = get_course_blocks(student, usage_key)
-        subsection = course_structure_for_course[usage_key]
-        from lms.djangoapps.grades.new.subsection_grade import SubsectionGradeFactory  # avoids circular import
-        SubsectionGradeFactory(student).update(subsection, course_structure_for_course, course)
-    else:
-        log.exception(
-            u"Failed to process SCORE_CHANGED signal. "
-            "points_possible: %s, points_earned: %s, user_id: %s, course_id: %s, "
-            "usage_id: %s", points_possible, points_earned, user_id, course_id, usage_id
+            "user_id: %s, course_id: %s, "
+            "usage_id: %s. Exception: %s", user_id, course_id, usage_id, ex.message
         )

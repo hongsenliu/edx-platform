@@ -6,10 +6,10 @@ import ddt
 from django.test import TestCase
 from django.conf import settings
 from mock import patch, MagicMock
+from student.tests.factories import UserFactory
 from xmodule.modulestore import ModuleStoreEnum
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory, check_mongo_calls
-from ..new import subsection_grade
 
 from ..signals import (
     submissions_score_set_handler,
@@ -32,8 +32,6 @@ SUBMISSION_RESET_KWARGS = {
     'course_id': 'CourseID',
     'item_id': 'i4x://org/course/usage/123456'
 }
-
-TEST_DATA_DIR = settings.COMMON_TEST_DATA_ROOT
 
 
 class SubmissionSignalRelayTest(TestCase):
@@ -162,7 +160,6 @@ class SubmissionSignalRelayTest(TestCase):
         self.signal_mock.assert_not_called()
 
 
-@patch.dict('django.conf.settings.FEATURES', {'ENABLE_SUBSECTION_GRADES_SAVED': True})
 @ddt.ddt
 class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
     """
@@ -170,22 +167,19 @@ class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
     initiates an update to the affected subsection grade.
     """
     def setUp(self):
-        """
-        Configure mocks for all the dependencies of the render method
-        """
         super(ScoreChangedUpdatesSubsectionGradeTest, self).setUp()
 
-        # mock student
-        self.user_mock = MagicMock()
-        self.user_mock.id = 42
-        self.get_user_mock = self.setup_patch('lms.djangoapps.grades.signals.user_by_anonymous_id', self.user_mock)
+    def setUpCourseAndUser(self, enable_subsection_grades):
+        """
+        Configures the course for this test.
+        """
+        self.user = UserFactory()
         self.course = CourseFactory.create(
             org='edx',
             name='course',
-            run='run'
-        )
-        self.course.save()
-        self.store.update_item(self.course, 0)
+            run='run',
+            metadata={'enable_subsection_grades_saved': enable_subsection_grades})
+        # self.course.enable_subsection_grades_saved = enable_subsection_grades
         self.chapter = ItemFactory.create(parent=self.course, category="chapter", display_name="Chapter")
         self.sequential = ItemFactory.create(parent=self.chapter, category='sequential', display_name="Open Sequential")
         self.problem = ItemFactory.create(parent=self.sequential, category='problem', display_name='problem')
@@ -193,32 +187,45 @@ class ScoreChangedUpdatesSubsectionGradeTest(ModuleStoreTestCase):
         self.score_changed_kwargs = {
             'points_possible': 10,
             'points_earned': 5,
-            'user_id': 'anonymous_id',
+            'user_id': self.user.id,
             'course_id': unicode(self.course.id),
-            'usage_id': unicode(self.problem.location)
+            'usage_id': unicode(self.problem.location),
         }
-
-        self.update_mock = self.setup_patch(subsection_grade.__name__ + '.SubsectionGradeFactory.update', None)
-
-    def setup_patch(self, function_name, return_value):
-        """
-        Patch a function with a given return value, and return the mock
-        """
-        mock = MagicMock(return_value=return_value)
-        new_patch = patch(function_name, new=mock)
-        new_patch.start()
-        self.addCleanup(new_patch.stop)
-        return mock
 
     @ddt.data(ModuleStoreEnum.Type.mongo, ModuleStoreEnum.Type.split)
     def test_subsection_grade_updated_on_signal(self, default_store):
         with self.store.default_store(default_store):
-            with check_mongo_calls(1) and self.assertNumQueries(0):
+            self.setUpCourseAndUser(True)
+            with check_mongo_calls(2) and self.assertNumQueries(18):
                 recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
-            self.assertTrue(self.update_mock.called)
 
-    @ddt.data('points_possible', 'points_earned', 'user_id', 'course_id', 'usage_id')
-    def test_missing_kwargs(self, kwarg):
+    @ddt.data(ModuleStoreEnum.Type.mongo, ModuleStoreEnum.Type.split)
+    def test_subsection_grades_not_enabled_on_course(self, default_store):
+        with self.store.default_store(default_store):
+            self.setUpCourseAndUser(False)
+            with check_mongo_calls(2) and self.assertNumQueries(1):
+                recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
+
+    @patch.dict('django.conf.settings.FEATURES', {'ENABLE_SUBSECTION_GRADES_SAVED': False})
+    @ddt.data(ModuleStoreEnum.Type.mongo, ModuleStoreEnum.Type.split)
+    def test_subsection_grades_not_enabled(self, default_store):
+        with self.store.default_store(default_store):
+            self.setUpCourseAndUser(True)
+            with check_mongo_calls(0) and self.assertNumQueries(0):
+                recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
+
+    @ddt.data(
+        ('points_possible', 2, 18),
+        ('points_earned', 2, 18),
+        ('user_id', 0, 1),
+        ('course_id', 0, 0),
+        ('usage_id', 0, 0),
+    )
+    @ddt.unpack
+    def test_missing_kwargs(self, kwarg, expected_mongo_calls, expected_sql_calls):
+        self.setUpCourseAndUser(True)
         del self.score_changed_kwargs[kwarg]
-        recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
-        self.assertEqual(self.update_mock.called, kwarg in ['points_possible', 'points_earned'])
+        with patch('lms.djangoapps.grades.signals.log') as log_mock:
+            with check_mongo_calls(expected_mongo_calls) and self.assertNumQueries(expected_sql_calls):
+                recalculate_subsection_grade_handler(None, **self.score_changed_kwargs)
+            self.assertEqual(log_mock.exception.called, kwarg not in ['points_possible', 'points_earned'])
